@@ -1,0 +1,20 @@
+---
+- name: Check server state
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Check whether marker file exists
+      ansible.builtin.stat:
+        path: /opt/test.file
+      register: marker_file
+
+    - name: Store file presence as a fact
+      ansible.builtin.set_fact:
+        myapp_marker_present: "{{ marker_file.stat.exists }}"
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }}
+          marker file present={{ myapp_marker_present }}
