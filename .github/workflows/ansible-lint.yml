@@ -1,0 +1,54 @@
+
+name: Ansible Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ansible-lint:
+    name: Ansible Lint
+    runs-on: [self-hosted, linux, x64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Lint changed playbooks
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          files=()
+
+          while IFS= read -r -d '' file; do
+            case "$file" in
+              playbooks/*.yml|playbooks/*.yaml)
+                files+=("$file")
+                ;;
+            esac
+          done < <(
+            git diff --name-only -z \
+              --diff-filter=ACMR \
+              "$BASE_SHA" "$HEAD_SHA" \
+              -- playbooks/
+          )
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No changed playbook YAML files."
+            exit 0
+          fi
+
+          printf 'Linting: %s\n' "${files[@]}"
+
+          /opt/ansible-lint-venv/bin/ansible-lint \
+            --offline "${files[@]}"
